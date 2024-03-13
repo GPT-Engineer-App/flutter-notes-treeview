@@ -1,0 +1,142 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_treeview/flutter_treeview.dart';
+import 'package:rich_text_editor/rich_text_editor.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Note-Taking App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  List<Node> _nodes = [];
+  Node? _selectedNode;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the tree view with sample data
+    _nodes = [
+      Node(
+        key: 'workspace1',
+        label: 'Workspace 1',
+        children: [
+          Node(key: 'note1', label: 'Note 1'),
+          Node(key: 'note2', label: 'Note 2'),
+        ],
+      ),
+      Node(
+        key: 'workspace2',
+        label: 'Workspace 2',
+        children: [
+          Node(key: 'note3', label: 'Note 3'),
+        ],
+      ),
+    ];
+  }
+
+  void _addWorkspace() {
+    setState(() {
+      _nodes.add(Node(key: 'workspace${_nodes.length + 1}', label: 'New Workspace'));
+    });
+  }
+
+  void _addNote() {
+    if (_selectedNode != null && _selectedNode!.isParent) {
+      setState(() {
+        _selectedNode!.children.add(Node(key: 'note${_selectedNode!.children.length + 1}', label: 'New Note'));
+      });
+    }
+  }
+
+  void _deleteNode() {
+    if (_selectedNode != null) {
+      setState(() {
+        _nodes.removeWhere((node) => node.key == _selectedNode!.key);
+        _selectedNode = null;
+      });
+    }
+  }
+
+  void _onNodeTap(Node node) {
+    setState(() {
+      _selectedNode = node;
+    });
+  }
+
+  void _onNodeDragEnd(Node node, int oldIndex, int newIndex) {
+    setState(() {
+      if (node.isParent) {
+        // Reorder workspaces
+        final workspace = _nodes.removeAt(oldIndex);
+        _nodes.insert(newIndex, workspace);
+      } else {
+        // Reorder notes within a workspace
+        final note = _selectedNode!.children.removeAt(oldIndex);
+        _selectedNode!.children.insert(newIndex, note);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Note-Taking App'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: _addWorkspace,
+          ),
+          IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: _deleteNode,
+          ),
+        ],
+      ),
+      body: Row(
+        children: [
+          Expanded(
+            child: TreeView(
+              nodes: _nodes,
+              onNodeTap: _onNodeTap,
+              onNodeDragEnd: _onNodeDragEnd,
+            ),
+          ),
+          Expanded(
+            child: _selectedNode != null && !_selectedNode!.isParent
+                ? RichTextEditor(
+                    initialContent: 'Enter your note here...',
+                    onTextChanged: (text) {
+                      // Save the note content
+                    },
+                  )
+                : Container(),
+          ),
+        ],
+      ),
+      floatingActionButton: _selectedNode != null && _selectedNode!.isParent
+          ? FloatingActionButton(
+              onPressed: _addNote,
+              child: Icon(Icons.add),
+            )
+          : null,
+    );
+  }
+}
